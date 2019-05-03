@@ -52,9 +52,14 @@
             overflow: hidden;
             background-color: transparent;
         }
-        .banner{
-            background:#fff url(images/France,%20Europe.jpg) center center scroll no-repeat; 
+        
+        .banner {
+            background: #fff url(images/France,%20Europe.jpg) center center scroll no-repeat;
             background-size: cover;
+        }
+        
+        .h0 {
+            font-size: 6rem;
         }
 
     </style>
@@ -71,9 +76,18 @@
 
 <body>
     <main class="container-fluid">
-        <div class="page banner" >
+        <!-- ### 首頁(有設背景圖) ### -->
+        <div class="page banner">
+            <!-- # black shadow # -->
             <div class="page position-absolute text-white" style="background-color: black;opacity: 0.5;"></div>
-            <div class="page position-absolute text-white" style="background-color: transparent">flex</div>
+            <!-- # 文字 # -->
+            <div class="row align-items-center">
+                <div class="col"></div>
+                <div class="col-10">
+                    <h1 class="h0 position-absolute text-white text-center text-nowrap" style="width: 100%;">h1. Bootstrap heading</h1>
+                </div>
+                <div class="col"></div>
+            </div>
         </div>
 
         <div class="page" style="background-color: azure;">
@@ -82,6 +96,7 @@
             </div>
         </div>
         <!--        <div class="fixed-top ">Float right on all viewport sizes</div>-->
+
     </main>
 
 

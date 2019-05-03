@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Material Design & Bootstrap：https://fezvrasta.github.io/bootstrap-material-design/docs/4.0/getting-started/introduction/ -->
+<!-- Google 合作夥伴 https://cloud.google.com/partners/become-a-partner/services-track -->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="">
+
+    <title>A Traveler Record</title>
+
+    <!-- # Bootstrap core CSS # -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- # JQuery # -->
+    <!-- # Optional JavaScript # -->
+    <!-- # jQuery first, then Popper.js, then Bootstrap JS # -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+    <!-- # ArcGIS Javascript API 4.10 # -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.10/esri/css/main.css">
+    <script src="https://js.arcgis.com/4.10/"></script>
+
+    <!-- # Material Design for Bootstrap fonts and icons # -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons">
+
+    <!-- # Material Design Icon # https://github.com/google/material-design-icons -->
+    <!-- # Bootstrap + Material Design # https://fezvrasta.github.io/bootstrap-material-design/docs/4.0/bootstrap-components/alerts/ -->
+
+
+    <!-- # Custom styles for this template # -->
+    <style>
+        body {
+            background-color: gray;
+            height: 100vh;
+        }
+        
+        .flex-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        #view_2d {
+            height: 50vh;
+            width: 50%;
+        }
+        
+        #view_3d {
+            height: 50vh;
+            width: 50%;
+        }
+        
+        #view_street {
+            height: 100vh;
+            width: 50%;
+        }
+
+    </style>
+
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            z-index: -1;
+        }
+        
+        #overviewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            z-index: -1;
+        }
+        
+        #extentDiv {
+            background-color: rgba(0, 0, 0, 0.5);
+            position: absolute;
+            z-index: 2;
+            /* 隱藏 */
+            visibility: collapse;
+        }
+        
+        #topbar {
+            background: #fff;
+            padding: 10px;
+        }
+        
+        #newsliderDiv {
+            position: absolute;
+            bottom: 20px;
+            left: 325px;
+            width: 200px;
+            height: 64px;
+            border: 1px solid black;
+        }
+
+    </style>
+    <script>
+        $(document).ready(function() {
+
+        });
+
+        var _google_street_api_key = 'AIzaSyDB9fY1sazeqrwhXcwV64iO4FoLElvWQTk';
+        var coordinate; // getPosition();
+        var str_frame;
+
+        function getFrame() {
+            streetFrame = "https://maps.google.com/maps/embed/v1/streetview?location=" + coordinate + "&heading=151.78&pitch=-0.76&key=" + _google_street_api_key;
+            $('#streetFrame').attr('src', streetFrame)
+
+        }
+
+        function getPosition(x, y) {
+            var lon;
+            var lat;
+            var w = 675;
+            var h = 485;
+            //window.alert(w + "," + h);
+            //window.alert(window.screen.availWidth + "," + window.screen.availHeight);
+            var uw = (window.screen.availWidth - w) / 2;
+            var uh = (window.screen.availHeight - h) / 2;
+            //--------------轉換經緯度TWD97TM2=>WGS84-------------//
+            //Transform(_lat, _lon);
+            var a = 6378137.0;
+            var b = 6356752.314245;
+            var lon0 = 121 * Math.PI / 180;
+            var k0 = 0.9999;
+            var dx = 250000;
+            // input_lat: TWD97橫座標, 南北緯度, latitude N
+            // input_lon: TWD97縱座標, 東西經度, longitude E
+            var dy = 0;
+            var e = Math.pow((1 - Math.pow(b, 2) / Math.pow(a, 2)), 0.5);
+            x -= dx;
+            y -= dy;
+            // Calculate the Meridional Arc
+            var M = y / k0;
+            // Calculate Footprint Latitude
+            var mu = M / (a * (1.0 - Math.pow(e, 2) / 4.0 - 3 * Math.pow(e, 4) / 64.0 - 5 * Math.pow(e, 6) / 256.0));
+            var e1 = (1.0 - Math.pow((1.0 - Math.pow(e, 2)), 0.5)) / (1.0 + Math.pow((1.0 - Math.pow(e, 2)), 0.5));
+            var J1 = (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32.0);
+            var J2 = (21 * Math.pow(e1, 2) / 16 - 55 * Math.pow(e1, 4) / 32.0);
+            var J3 = (151 * Math.pow(e1, 3) / 96.0);
+            var J4 = (1097 * Math.pow(e1, 4) / 512.0);
+            var fp = mu + J1 * Math.sin(2 * mu) + J2 * Math.sin(4 * mu) + J3 * Math.sin(6 * mu) + J4 * Math.sin(8 * mu);
+            // Calculate Latitude and Longitude
+            var e2 = Math.pow((e * a / b), 2);
+            var C1 = Math.pow(e2 * Math.cos(fp), 2);
+            var T1 = Math.pow(Math.tan(fp), 2);
+            var R1 = a * (1 - Math.pow(e, 2)) / Math.pow((1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2)), (3.0 / 2.0));
+            var N1 = a / Math.pow((1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2)), 0.5);
+            var D = x / (N1 * k0);
+            // 計算緯度
+            var Q1 = N1 * Math.tan(fp) / R1;
+            var Q2 = (Math.pow(D, 2) / 2.0);
+            var Q3 = (5 + 3 * T1 + 10 * C1 - 4 * Math.pow(C1, 2) - 9 * e2) * Math.pow(D, 4) / 24.0;
+            var Q4 = (61 + 90 * T1 + 298 * C1 + 45 * Math.pow(T1, 2) - 3 * Math.pow(C1, 2) - 252 * e2) * Math.pow(D, 6) / 720.0;
+            var _lat = fp - Q1 * (Q2 - Q3 + Q4);
+            // 計算經度
+            var Q5 = D;
+            var Q6 = (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6;
+            var Q7 = (5 - 2 * C1 + 28 * T1 - 3 * Math.pow(C1, 2) + 8 * e2 + 24 * Math.pow(T1, 2)) * Math.pow(D, 5) / 120.0;
+            var _lon = lon0 + (Q5 - Q6 + Q7) / Math.cos(fp);
+            lat = (_lat * 180) / Math.PI; //緯
+            lon = (_lon * 180) / Math.PI; //經
+            // Google map 支援格式: (緯度,經度)
+            //--------------轉換經緯度TWD97TM2=>WGS84-------------//
+            //alert(lon+","+lat);
+
+            return "" + lat.toString() + "," + lon.toString() + "";
+        }
+
+        function getPosition2(lat, lon) {
+            return "" + lat + "," + lon + "";
+        }
+
+    </script>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/SceneView",
+            "esri/views/MapView",
+            "esri/core/watchUtils",
+            "esri/widgets/BasemapToggle",
+            "esri/widgets/AreaMeasurement3D",
+            "esri/widgets/DirectLineMeasurement3D",
+            "esri/widgets/LayerList",
+            "esri/widgets/Expand",
+            "esri/layers/FeatureLayer",
+            "esri/layers/ElevationLayer",
+            "esri/layers/SceneLayer",
+            "esri/layers/GroupLayer",
+            "esri/geometry/SpatialReference",
+            "esri/geometry/Extent",
+            "esri/PopupTemplate",
+            "esri/renderers/SimpleRenderer",
+            "esri/symbols/PathSymbol3DLayer",
+            "esri/symbols/LineSymbol3D",
+            "esri/layers/Layer",
+            "dojo/domReady!"
+        ], function(Map, SceneView, MapView, watchUtils, BasemapToggle, AreaMeasurement3D, DirectLineMeasurement3D, LayerList, Expand, FeatureLayer, ElevationLayer, SceneLayer, GroupLayer, SpatialReference, Extent, PopupTemplate, SimpleRenderer, PathSymbol3DLayer, LineSymbol3D, Layer) {
+
+            var activeWidget = null;
+            setGapValue(100);
+
+            function inputHandler() {
+                setGapValue(parseInt(myslider.value));
+            }
+            myslider.addEventListener("input", inputHandler);
+            myslider.addEventListener("output", inputHandler);
+
+            function setGapValue(value) {
+                sliderValue.innerHTML = (Math.round(value * 100) / 100);
+            };
+            var PIPEtemplate = { // autocasts as new PopupTemplate()
+                title: "{showlayer}",
+                content: [{
+                    // It is also possible to set the fieldInfos outside of the content
+                    // directly in the popupTemplate. If no fieldInfos is specifically set
+                    // in the content, it defaults to whatever may be set within the popupTemplate.
+                    type: "fields",
+                    fieldInfos: [{
+                        fieldName: "LAYER",
+                        label: "類別碼",
+                        visible: true
+                    }, {
+                        fieldName: "ID",
+                        label: "識別碼",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "SNO",
+                        label: "起點編號",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "ENO",
+                        label: "終點編號",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "ORGAN",
+                        label: "管理單位",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "OP_CODE",
+                        label: "作業區分",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "SET_DATE",
+                        label: "設置日期",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "NUM",
+                        label: "管線編號",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "UNIT",
+                        label: "尺寸單位",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "WIDTH",
+                        label: "管徑寬度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "HIGHT",
+                        label: "管徑高度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "P_COUNT",
+                        label: "涵管條數",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "MATERIAL",
+                        label: "管線材料",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "STR_DP",
+                        label: "起點埋設深度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "END_DP",
+                        label: "終點埋設深度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "TYPE",
+                        label: "管線型態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "USEMODE",
+                        label: "使用狀態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "DATAMODE",
+                        label: "資料狀態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "NOTE",
+                        label: "備註",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "PRESSURE",
+                        label: "壓力區分",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "SUBSTANCE",
+                        label: "輸送物質",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }]
+                }]
+            };
+            var HOLEtemplate = { // autocasts as new PopupTemplate()
+                title: "{showlayer}",
+                content: [{
+                    // It is also possible to set the fieldInfos outside of the content
+                    // directly in the popupTemplate. If no fieldInfos is specifically set
+                    // in the content, it defaults to whatever may be set within the popupTemplate.
+                    type: "fields",
+                    fieldInfos: [{
+                        fieldName: "LAYER",
+                        label: "類別碼",
+                        visible: true
+                    }, {
+                        fieldName: "ID",
+                        label: "識別碼",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "ORGAN",
+                        label: "管理單位",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "OP_CODE",
+                        label: "作業區分",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "SET_DATE",
+                        label: "設置日期",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "NUM",
+                        label: "人手孔編號",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "TYPE",
+                        label: "孔蓋種類",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "UNIT",
+                        label: "尺寸單位",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "DIAMETER",
+                        label: "蓋部寬度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "DIAMETER1",
+                        label: "蓋部長度",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "PENSTOCK",
+                        label: "閘門名稱",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "G_HEIGHT",
+                        label: "地盤高(高程)",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "HOLE_DEP",
+                        label: "孔深",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "SET_MODE",
+                        label: "孔蓋型態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "USEMODE",
+                        label: "使用狀態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "DATAMODE",
+                        label: "資料狀態",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "CONTENT",
+                        label: "內容物",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }, {
+                        fieldName: "NOTE",
+                        label: "備註",
+                        visible: true,
+                        format: {
+                            digitSeparator: true,
+                            places: 0
+                        }
+                    }]
+                }]
+            };
+            var renderer_綜合方管 = {
+                type: "simple",
+                symbol: {
+                    type: "polygon-3d",
+                    symbolLayers: [{
+                        type: "extrude",
+                        material: {
+                            color: [0, 0, 255, 100]
+                        },
+                        edges: {
+                            type: "solid",
+                            color: [50, 50, 50]
+                        }
+                    }]
+                },
+                visualVariables: [{
+                    type: "size",
+                    field: "H",
+                    valueUnit: "meters"
+                }]
+            };
+            var renderer_電信圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [0, 255, 0, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+            var renderer_電力圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [255, 127, 0, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+            var renderer_瓦斯圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [255, 0, 0, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+            var renderer_輸油石化圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [255, 0, 255, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+            var renderer_下水道圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [127, 0, 0, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+            var renderer_自來水圓管 = new SimpleRenderer({
+                symbol: new LineSymbol3D({
+                    symbolLayers: [new PathSymbol3DLayer({
+                        material: {
+                            color: [0, 255, 255, 100]
+                        }
+                    })]
+                }),
+                visualVariables: [{
+                    type: "size",
+                    field: "d",
+                    valueUnit: "meters"
+                }]
+            });
+
+            function getSymbol(name) {
+                return {
+                    type: "web-style", // autocasts as new WebStyleSymbol()
+                    styleUrl: "http://pipegis3d.kcg.gov.tw/portal/sharing/rest/content/items/08123ce3a8044272a4c69beee5940bf0/data?token=ddpueuTyv0tZxEKY4OIrf6DXfY7wTSCUVIUnIoIiEEThymEnriUEU9JxjeKKI4TolS1uoTdCJ0FIAombk-aji0oUv6wJ2_-T9kBYtNNSQVwL04ZvgWgzY9pYkpuAG6A3p3rKt6bJusWnKf_Dc--4gbgpn20pxInKSOKNPLJuiwndaG2v2ZnrKuuw1q8dEFnuwyc9jiyiPrXKhpV1ZCz6Kw..",
+                    name: name,
+                    styleName: "電力人手孔"
+                };
+            }
+            var renderer = {
+                type: "unique-value",
+                field: "type",
+                uniqueValueInfos: [{
+                    value: "0",
+                    symbol: getSymbol("電力人孔")
+                }, {
+                    value: "1",
+                    symbol: getSymbol("電力手孔")
+                }],
+                visualVariables: [{
+                    type: "rotation",
+                    field: "NEAR_ANGLE"
+                }, {
+                    type: "size",
+                    axis: "height",
+                    field: "ZM",
+                    valueUnit: "meters"
+                }, {
+                    type: "size",
+                    axis: "width",
+                    field: "XM",
+                    valueUnit: "meters"
+                }, {
+                    type: "size",
+                    axis: "depth",
+                    field: "YM",
+                    valueUnit: "meters"
+                }]
+            };
+            var E1_holeLyr = new FeatureLayer({
+                title: "台電高雄人手孔",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E4%BA%BA%E6%89%8B%E5%AD%94STYLE%E6%B8%AC%E8%A9%A6/FeatureServer",
+                renderer: renderer,
+                popupTemplate: HOLEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "ontheground",
+                    offset: 0.02
+                }
+            });
+            var E1_pipesLyr = new FeatureLayer({
+                title: "台電高雄管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/MyMapService/FeatureServer/3",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var E2_pipesLyr = new FeatureLayer({
+                title: "台電鳳山管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/管線FS_含方管/FeatureServer/0",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var E3_pipesLyr = new FeatureLayer({
+                title: "台電高屏管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/管線FS_含方管/FeatureServer/1",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var EB_pipesLyr = new FeatureLayer({
+                title: "環保局管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/1",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var EK_pipesLyr = new FeatureLayer({
+                title: "高捷高壓電力管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/2",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var EL_pipesLyr = new FeatureLayer({
+                title: "路燈管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/3",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var EP_pipesLyr = new FeatureLayer({
+                title: "港務局管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/4",
+                renderer: renderer_電力圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var TC_pipesLyr = new FeatureLayer({
+                title: "中華電信管線",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/MyMapService/FeatureServer/11",
+                renderer: renderer_電信圓管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var CD_pipesLyr = new FeatureLayer({
+                title: "綜合管道",
+                visible: true,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/API_TEST/FeatureServer/2",
+                renderer: renderer_綜合方管,
+                popupTemplate: PIPEtemplate,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var W1_layer = new FeatureLayer({
+                title: "自來水管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/29",
+                renderer: renderer_自來水圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var SS_layer = new FeatureLayer({
+                title: "污水下水道管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/20",
+                renderer: renderer_下水道圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var SD_layer = new FeatureLayer({
+                title: "雨水下水道管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/管線FS_含方管/FeatureServer/3",
+                renderer: renderer_下水道圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var O1_layer = new FeatureLayer({
+                title: "中石化管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/11",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var O3_layer = new FeatureLayer({
+                title: "台灣氯乙烯管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/12",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var OA_layer = new FeatureLayer({
+                title: "亞聚管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/13",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var OC_layer = new FeatureLayer({
+                title: "中油管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D管線設施物FS/中油管線/FeatureServer/0",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var OF_layer = new FeatureLayer({
+                title: "台塑管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/14",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var OI_layer = new FeatureLayer({
+                title: "台灣石化合成管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/15",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var OL_layer = new FeatureLayer({
+                title: "李長榮化學管線",
+                visible: true,
+                popupTemplate: PIPEtemplate,
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/3D%E7%AE%A1%E7%B7%9A%E8%A8%AD%E6%96%BD%E7%89%A9FS/%E7%AE%A1%E7%B7%9AFS/FeatureServer/16",
+                renderer: renderer_輸油石化圓管,
+                outFields: ["*"],
+                elevationInfo: {
+                    mode: "absolute-height",
+                    offset: 0
+                }
+            });
+            var building_layer = new SceneLayer({
+                title: "前鎮區建築模型",
+                visible: true,
+                url: "http://pipegis3d.kcg.gov.tw/server/rest/services/Hosted/%E5%89%8D%E9%8E%AE%E5%8D%80%E5%BB%BA%E7%AF%89%E6%A8%A1%E5%9E%8B/SceneServer"
+            });
+            var TC_hole_layer = new SceneLayer({
+                title: "中華電信人手孔",
+                visible: true,
+                url: "http://pipegis3d.kcg.gov.tw/server/rest/services/Hosted/TC_%E4%B8%AD%E8%8F%AF%E9%9B%BB%E4%BF%A1%E4%BA%BA%E6%89%8B%E5%AD%94_20190108/SceneServer"
+            });
+            var group1 = new GroupLayer({
+                title: "電信類設施",
+                visible: false,
+                layers: [TC_pipesLyr, TC_hole_layer],
+            });
+            var group2 = new GroupLayer({
+                title: "電力類設施",
+                visible: false,
+                layers: [E1_holeLyr, E1_pipesLyr, E2_pipesLyr, E3_pipesLyr, EB_pipesLyr, EK_pipesLyr, EL_pipesLyr, EP_pipesLyr],
+            });
+            var group3 = new GroupLayer({
+                title: "自來水類設施",
+                visible: false,
+                layers: [W1_layer],
+            });
+            var group4 = new GroupLayer({
+                title: "下水道類設施",
+                visible: false,
+                layers: [SD_layer, SS_layer],
+            });
+            var group5 = new GroupLayer({
+                title: "綜合類設施",
+                visible: false,
+                layers: [CD_pipesLyr],
+            });
+            var group6 = new GroupLayer({
+                title: "其他",
+                visible: true,
+                layers: [building_layer],
+            });
+            var group7 = new GroupLayer({
+                title: "輸油石化類設施",
+                visible: false,
+                layers: [O1_layer, O3_layer, OA_layer, OC_layer, OF_layer, OI_layer, OL_layer],
+            });
+
+            // Create a Map with a basemap, to be used with in the main view
+            var mainMap = new Map({
+                basemap: "topo",
+                layers: [group6, group5, group4, group7, group3, group2, group1],
+                ground: "world-elevation"
+            });
+            // Create another Map, to be used in the overview "view"
+            var overviewMap = new Map({
+                basemap: "topo"
+            });
+            // Create the SceneView
+            var mainView = new SceneView({
+                container: "viewDiv",
+                map: mainMap
+            });
+            mainView.ui.add("topbar", "top-left");
+            document.getElementById("distanceButton").addEventListener("click",
+                function() {
+                    setActiveWidget(null);
+                    if (!this.classList.contains('active')) {
+                        setActiveWidget('distance');
+                    } else {
+                        setActiveButton(null);
+                    }
+                }
+            );
+            document.getElementById("areaButton").addEventListener("click",
+                function() {
+                    setActiveWidget(null);
+                    if (!this.classList.contains('active')) {
+                        setActiveWidget('area');
+                    } else {
+                        setActiveButton(null);
+                    }
+                }
+            );
+
+            function setActiveWidget(type) {
+                switch (type) {
+                    case "distance":
+                        activeWidget = new DirectLineMeasurement3D({
+                            view: mainView
+                        });
+                        activeWidget.viewModel.newMeasurement();
+                        mainView.ui.add(activeWidget, "top-left");
+                        setActiveButton(document.getElementById('distanceButton'));
+                        break;
+                    case "area":
+                        activeWidget = new AreaMeasurement3D({
+                            view: mainView
+                        });
+                        activeWidget.viewModel.newMeasurement();
+                        mainView.ui.add(activeWidget, "top-left");
+                        setActiveButton(document.getElementById('areaButton'));
+                        break;
+                    case null:
+                        if (activeWidget) {
+                            mainView.ui.remove(activeWidget);
+                            activeWidget.destroy();
+                            activeWidget = null;
+                        }
+                        break;
+                }
+            }
+
+            function setActiveButton(selectedButton) {
+                mainView.focus();
+                var elements = document.getElementsByClassName("active");
+                for (var i = 0; i < elements.length; i++) {
+                    elements[i].classList.remove("active");
+                }
+                if (selectedButton) {
+                    selectedButton.classList.add("active");
+                }
+            }
+            var dem1 = ElevationLayer({
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/Extract_%E9%AB%98%E9%9B%84_D1/ImageServer"
+            });
+            mainMap.ground.layers.add(dem1);
+            var dem2 = ElevationLayer({
+                url: "https://pipegis3d.kcg.gov.tw/server/rest/services/%E5%89%8D%E9%8E%AE%E5%B0%8F%E6%B8%AF_DEM/ImageServer"
+            });
+            mainMap.ground.layers.add(dem2);
+
+            mainView.when(function() {
+                mainMap.ground.navigationConstraint = {
+                    type: "none"
+                };
+                var slider = document.getElementById("myslider");
+                slider.oninput = function() {
+                    mainMap.ground.opacity = this.value / 100;
+                }
+                mainView.goTo({
+                    position: {
+                        x: 1.33925765114E7,
+                        y: 2587130.735100001,
+                        z: 50,
+                        spatialReference: {
+                            wkid: 3857
+                        }
+                    },
+                    heading: 35,
+                    tilt: 60
+                }, {
+                    animate: false
+                });
+            });
+            var layerList = new LayerList({
+                view: mainView
+            });
+            var LyerListExpand = new Expand({
+                view: mainView,
+                content: layerList
+            });
+            layerList.watch("activeLayerList", function() {
+                var mobileSize = mainView.heightBreakpoint === "xsmall" || mainView.widthBreakpoint ===
+                    "xsmall";
+                if (mobileSize) {
+                    LyerListExpand.collapse();
+                }
+            });
+            mainView.ui.add(LyerListExpand, "top-right");
+            var measureExpand = new Expand({
+                view: mainView,
+                content: topbar
+            });
+            mainView.ui.add(measureExpand, "top-left");
+            var toggle = new BasemapToggle({
+                view: mainView,
+                nextBasemap: "hybrid"
+            });
+            mainView.ui.add(toggle, "bottom-right");
+
+            // Create the MapView for overview map
+            var mapView = new MapView({
+                container: "overviewDiv",
+                map: overviewMap,
+                constraints: {
+                    rotationEnabled: false
+                }
+            });
+            // Remove the default widgets
+            mapView.ui.components = [];
+            var extentDiv = document.getElementById("extentDiv");
+            mapView.when(function() {
+                // Update the overview extent whenever the MapView or SceneView extent changes
+                mainView.watch("extent", updateOverviewExtent);
+                mapView.watch("extent", updateOverviewExtent);
+                // Update the minimap overview when the main view becomes stationary
+                watchUtils.when(mainView, "stationary", updateOverview);
+
+                function updateOverview() {
+                    // Animate the MapView to a zoomed-out scale so we get a nice overview.
+                    // We use the "progress" callback of the goTo promise to update
+                    // the overview extent while animating
+                    mapView.goTo({
+                        center: mainView.center,
+                        scale: mainView.scale * 2 * Math.max(mainView.width /
+                            mapView.width,
+                            mainView.height / mapView.height)
+                    });
+                    var lat = mainView.latitude;
+                    var lon = mainView.longitude;
+
+                    //coordinate = getPosition(newY,newX);
+                    coordinate = getPosition2(lat, lon)
+                    console.log("原始", mainView.center);
+                    console.log("計算後", coordinate);
+                    getFrame();
+                }
+
+                function updateOverviewExtent() {
+                    // Update the overview extent by converting the SceneView extent to the
+                    // MapView screen coordinates and updating the extentDiv position.
+                    var extent = mainView.extent;
+                    var bottomLeft = mapView.toScreen(extent.xmin, extent.ymin);
+                    var topRight = mapView.toScreen(extent.xmax, extent.ymax);
+                    extentDiv.style.top = topRight.y + "px";
+                    extentDiv.style.left = bottomLeft.x + "px";
+                    extentDiv.style.height = (bottomLeft.y - topRight.y) + "px";
+                    extentDiv.style.width = (topRight.x - bottomLeft.x) + "px";
+                    //--------------------------------------------------------------//
+
+
+                }
+            });
+        });
+
+    </script>
+</head>
+
+<body>
+    <header>
+    </header>
+    <main class="flex-container">
+
+        <div id="view_3d">
+            <div id="viewDiv"></div>
+        </div>
+        <div id="view_2d">
+            <div id="overviewDiv">
+                <div id="extentDiv"></div>
+            </div>
+        </div>
+        <div id="view_street">
+            <iframe id="streetFrame" width="100%" height="100%" resize="both" overflow="auto"></iframe>
+        </div>
+    </main>
+    <div id="topbar">
+        <button class="action-button esri-icon-minus" id="distanceButton" type="button" title="Measure distance between two points"></button>
+        <button class="action-button esri-icon-polygon" id="areaButton" type="button" title="Measure area"></button>
+    </div>
+    <div id="newsliderDiv">
+        <div id="sliderContainer" class="esri-widget">
+            <div id="titleDiv" class="esri-widget">地面透明度</div>
+            <span id="sliderValue"></span>
+            <div id="rangeWrapper">
+                <input id="myslider" type="range" min="0" max="100" value="100" step="0.25" style="width:95%" />
+            </div>
+        </div>
+    </div>
+    <footer>
+    </footer>
+</body>
+
+</html>
